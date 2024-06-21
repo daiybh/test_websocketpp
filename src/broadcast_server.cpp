@@ -4,12 +4,11 @@
 
 #include <iostream>
 #include <set>
-
 /*#include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>*/
 #include <websocketpp/common/thread.hpp>
-
+#include <format>
 typedef websocketpp::server<websocketpp::config::asio> server;
 
 using websocketpp::connection_hdl;
@@ -38,10 +37,13 @@ struct action {
     action(action_type t, connection_hdl h) : type(t), hdl(h) {}
     action(action_type t, connection_hdl h, server::message_ptr m)
         : type(t), hdl(h), msg(m) {}
+    action(std::string msg) 
+    :type(action_type::MESSAGE),strMessage(msg){ }
 
     action_type type;
     websocketpp::connection_hdl hdl;
-    server::message_ptr msg;
+    server::message_ptr msg=nullptr;
+    std::string strMessage;
 };
 
 class broadcast_server {
@@ -99,6 +101,18 @@ public:
         }
         m_action_cond.notify_one();
     }
+    void sayHello() {
+        sendMessage("hello");
+    }
+    void sendMessage(std::string msg) {
+		{
+			lock_guard<mutex> guard(m_action_lock);
+			//std::cout << "on_message" << std::endl;
+			m_actions.push(action(msg));
+		}
+		m_action_cond.notify_one();
+
+    }
 
     void process_messages() {
         while (1) {
@@ -115,7 +129,7 @@ public:
 
             if (a.type == SUBSCRIBE) {
                 lock_guard<mutex> guard(m_connection_lock);
-                m_connections.insert(a.hdl);
+                m_connections.insert(a.hdl);                
             }
             else if (a.type == UNSUBSCRIBE) {
                 lock_guard<mutex> guard(m_connection_lock);
@@ -125,9 +139,12 @@ public:
                 lock_guard<mutex> guard(m_connection_lock);
 
                 con_list::iterator it;
-                for (it = m_connections.begin(); it != m_connections.end(); ++it) {
-                    m_server.send(*it, a.msg);
-                }
+				for (it = m_connections.begin(); it != m_connections.end(); ++it) {
+					if (a.msg != nullptr)
+						m_server.send(*it, a.msg);
+					else
+						m_server.send(*it, a.strMessage, websocketpp::frame::opcode::TEXT);
+				}
             }
             else {
                 // undefined.
@@ -152,11 +169,21 @@ int main() {
 
         // Start a thread to run the processing loop
         thread t(bind(&broadcast_server::process_messages, &server_instance));
-
+		thread t1([&]() {
+			uint64_t loop = 0;
+			while (1) {
+				Sleep(1000);
+				std::string x = std::format("hhaa_{}\n", loop++);
+				server_instance.sendMessage(x);
+				printf(x.data());
+			}
+			});
         // Run the asio loop with the main thread
         server_instance.run(9002);
 
+        
         t.join();
+        t1.join();
 
     }
     catch (websocketpp::exception const& e) {
