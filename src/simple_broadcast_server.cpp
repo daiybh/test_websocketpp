@@ -28,7 +28,7 @@ public:
 
 	void on_open(connection_hdl hdl) {
 		lock_guard<mutex> guard(m_connection_lock);
-		m_connections.insert(hdl);
+		//m_connections.insert(hdl);
 	}
 
 	void on_close(connection_hdl hdl) {
@@ -37,9 +37,10 @@ public:
 	}
 
 	void on_message(connection_hdl hdl, server::message_ptr msg) {
-		lock_guard<mutex> guard(m_connection_lock);
-		for (auto it : m_connections) {
-			m_server.send(it, msg);
+		if (msg->get_opcode() == websocketpp::frame::opcode::TEXT
+			&& msg->get_payload() == "Register") {
+			lock_guard<mutex> guard(m_connection_lock);
+			m_connections.insert(hdl);
 		}
 	}
 
