@@ -1,19 +1,23 @@
 import websockets
 import asyncio
-
+import json
 import time
-
+registerCmd = { "cmd":"register", "key" : "frametotcp"}
 async def connectWS(index):
+    loop=0
     while True:
         try:
             async with websockets.connect('ws://localhost:9002') as websocket:
-                await websocket.send(f'Register')
+                #registerCmd to string
+
+                await websocket.send(json.dumps(registerCmd))
                 while True:
                     message = await websocket.recv()    
                     print(f"{index} >> {message}")
         except Exception as ex:
-            print(f'{index} >> error',ex)
+            print(f'{loop}....{index} >> error',ex)
         await asyncio.sleep(1)
+        loop+=1
 
 
 
