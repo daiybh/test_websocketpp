@@ -21,7 +21,7 @@ public:
 	broadcast_server()
 	{
 		m_server.init_asio();
-
+		m_server.clear_access_channels(websocketpp::log::alevel::all);
 		m_server.set_open_handler(bind(&broadcast_server::on_open, this, ::_1));
 		m_server.set_close_handler(bind(&broadcast_server::on_close, this, ::_1));
 		m_server.set_message_handler(bind(&broadcast_server::on_message, this, ::_1, ::_2));
