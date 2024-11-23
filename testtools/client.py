@@ -10,7 +10,7 @@ async def connectWS(index):
             async with websockets.connect('ws://localhost:9002') as websocket:
                 #registerCmd to string
 
-                await websocket.send(json.dumps(registerCmd))
+                await websocket.send(json.dumps(registerCmd,indent=4))
                 while True:
                     message = await websocket.recv()    
                     print(f"{index} >> {message}")
